@@ -4,6 +4,7 @@ param domainName string
 param ecsDataLocation string = 'Europe'
 
 param appRegAppId string
+param appRegPrinId string
 param appRegTenantId string
 @secure()
 param appRegClientSecret string
@@ -14,6 +15,7 @@ module ecsModule 'modules/ecs.bicep' = {
     name: ecsName
     dataLocation: ecsDataLocation
     domainName: domainName
+    appRegPrinId: appRegPrinId
   }
 }
 

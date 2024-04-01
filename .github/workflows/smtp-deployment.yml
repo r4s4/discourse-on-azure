@@ -42,4 +42,5 @@ jobs:
                 domainName='${{ secrets.DOMAIN_NAME }}' \
                 appRegAppId='${{ secrets.ECS_APPREG_ID }}' \
                 appRegClientSecret='${{ secrets.ECS_APPREG_SECRET }}' \
-                appRegTenantId='${{ secrets.AZURE_TENANT_ID }}'
+                appRegTenantId='${{ secrets.AZURE_TENANT_ID }}' \
+                appRegPrinId='${{ secrets.ECS_APPREG_PRIN_ID }}'
