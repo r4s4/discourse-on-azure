@@ -1,2 +1,2 @@
-# discourse-on-cloud
-Set up discourse infrastructure using Terraform
+# discourse-on-azure
+Set up discourse infrastructure using ARM templates
