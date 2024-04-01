@@ -1,34 +1,45 @@
 name: SMTP Deployment CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "main" ]
-  pull_request:
+    paths:
+      - 'templates/smtp/**'
+      - '.github/workflows/smtp-deployment.yml'
     branches: [ "main" ]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Checkout current branch
+        uses: actions/checkout@v3
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+
+      - name: Deploy SMTP Resources
+        uses: Azure/cli@v2.0.0
+        with:
+          inlineScript: |
+            az deployment group create \
+              --name ${{ vars.ECS_DEPLOYMENT_NAME }} \
+              --resource-group ${{ vars.ECS_RESOURCE_GROUP }} \
+              --template-file ./templates/smtp/main.bicep \
+              --parameters \
+                ecsName='${{ vars.ECS_NAME }}' \
+                domainName='${{ secrets.DOMAIN_NAME }}' \
+                appRegAppId='${{ secrets.ECS_APPREG_ID }}' \
+                appRegClientSecret='${{ secrets.ECS_APPREG_SECRET }}' \
+                appRegTenantId='${{ secrets.AZURE_TENANT_ID }}'
