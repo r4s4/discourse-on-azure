@@ -1,0 +1,54 @@
+name: SA Deployment CI
+
+on:
+  push:
+    paths:
+      - 'templates/storage-account/**'
+      - '.github/workflows/sa-deployment.yml'
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get last vnet data
+        id: vnet-data
+        run: |
+          output=$(az deployment group show -n ${{ vars.VNET_DEPLOYMENT_NAME }} -g ${{ vars.VNET_RESOURCE_GROUP }})
+          redisSubnetId=$(echo $output | jq -r '.properties.outputs.redisSubnetId.value')
+          containersSubnetId=$(echo $output | jq -r '.properties.outputs.containerAppsSubnetId.value')
+          echo "REDIS_SUBNET_ID=$redisSubnetId" >> "$GITHUB_OUTPUT"
+          echo "CONTAINERS_SUBNET_ID=$containersSubnetId" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+
+      - name: Deploy Storage Account Resources
+        uses: Azure/cli@v2.0.0
+        env:
+          REDIS_SUBNET_ID: ${{ steps.vnet-data.outputs.REDIS_SUBNET_ID }}
+          CONTAINERS_SUBNET_ID: ${{ steps.vnet-data.outputs.CONTAINERS_SUBNET_ID }}
+        with:
+          inlineScript: |
+            az deployment group create \
+              --name ${{ vars.SA_DEPLOYMENT_NAME }} \
+              --resource-group ${{ vars.SA_RESOURCE_GROUP }} \
+              --template-file ./templates/storage-account/main.bicep \
+              --parameters \
+                storageAccountPrefix='${{ vars.SA_PRIFIX_NAME }}' \
+                redisSubnetId=$REDIS_SUBNET_ID \
+                containersSubnetId=$CONTAINERS_SUBNET_ID
