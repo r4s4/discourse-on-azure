@@ -1,0 +1,41 @@
+name: VNet Deployment CI
+
+on:
+  push:
+    paths:
+      - 'templates/vnet/**'
+      - '.github/workflows/vnet-deployment.yml'
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+
+
+      - name: Deploy Vnet Resources
+        uses: Azure/cli@v2.0.0
+        with:
+          inlineScript: |
+            az deployment group create \
+              --name ${{ vars.VNET_DEPLOYMENT_NAME }} \
+              --resource-group ${{ vars.VNET_RESOURCE_GROUP }} \
+              --template-file ./templates/vnet/main.bicep \
+              --parameters \
+                virtualNetworkName='${{ vars.VNET_NAME }}' 
