@@ -50,7 +50,7 @@ jobs:
       - name: Checkout current branch
         uses: actions/checkout@v3
 
-      - name: Deploy Container Environment Resources
+      - name: Deploy Redis Resources
         uses: Azure/cli@v2.0.0
         env:
           STORAGE_ACCOUNT_NAME: ${{ steps.sa-data.outputs.STORAGE_ACCOUNT_NAME }}

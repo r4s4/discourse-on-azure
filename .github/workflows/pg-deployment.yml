@@ -1,0 +1,55 @@
+name: PG Deployment CI
+
+on:
+  push:
+    paths:
+      - 'templates/postgres/**'
+      - '.github/workflows/pg-deployment.yml'
+    branches: [ "main" ]
+
+  workflow_run:
+    workflows: ["VNet Deployment CI"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get last vnet data
+        id: vnet-data
+        run: |
+          output=$(az deployment group show -n ${{ vars.VNET_DEPLOYMENT_NAME }} -g ${{ vars.VNET_RESOURCE_GROUP }})
+          postgresSubnetId=$(echo $output | jq -r '.properties.outputs.postgresSubnetId.value')
+          echo "POSTGRES_SUBNET_ID=$postgresSubnetId" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+
+      - name: Deploy Postgres Resources
+        uses: Azure/cli@v2.0.0
+        env:
+          POSTGRES_SUBNET_ID: ${{ steps.vnet-data.outputs.POSTGRES_SUBNET_ID }}
+        with:
+          inlineScript: |
+            az deployment group create \
+              --name ${{ vars.PG_DEPLOYMENT_NAME }} \
+              --resource-group ${{ vars.PG_RESOURCE_GROUP }} \
+              --template-file ./templates/postgres/main.bicep \
+              --parameters \
+                serverName='${{ vars.PG_NAME }}' \
+                adminLoginUsername='${{ vars.PG_ADMIN_USER }}' \
+                postgresSubnetId=$POSTGRES_SUBNET_ID
