@@ -1,0 +1,71 @@
+name: Redis Deployment CI
+
+on:
+  push:
+    paths:
+      - 'templates/redis/**'
+      - '.github/workflows/redis-deployment.yml'
+    branches: [ "main" ]
+
+  workflow_run:
+    workflows: ["CENV Deployment CI", "SA Deployment CI"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get last SA data
+        id: sa-data
+        run: |
+          output=$(az deployment group show -n ${{ vars.SA_DEPLOYMENT_NAME }} -g ${{ vars.SA_RESOURCE_GROUP }})
+          storageAccountName=$(echo $output | jq -r '.properties.outputs.storageAccountName.value')
+          storageAccountAccessKey=$(echo $output | jq -r '.properties.outputs.storageAccountAccessKey.value')
+          echo "STORAGE_ACCOUNT_NAME=$storageAccountName" >> "$GITHUB_OUTPUT"
+          echo "STORAGE_ACCOUNT_ACCESS_KEY=$storageAccountAccessKey" >> "$GITHUB_OUTPUT"
+
+      - name: Get last CENV data
+        id: cenv-data
+        run: |
+          output=$(az deployment group show -n ${{ vars.CENV_DEPLOYMENT_NAME }} -g ${{ vars.CENV_RESOURCE_GROUP }})
+          containerAppEnvResourceName=$(echo $output | jq -r '.properties.outputs.containerAppEnvResourceName.value')
+          containerAppEnvResourceId=$(echo $output | jq -r '.properties.outputs.containerAppEnvResourceId.value')
+          echo "CONTAINER_ENV_RESOURCE_NAME=$containerAppEnvResourceName" >> "$GITHUB_OUTPUT"
+          echo "CONTAINER_ENV_RESOURCE_ID=$containerAppEnvResourceId" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+
+      - name: Deploy Container Environment Resources
+        uses: Azure/cli@v2.0.0
+        env:
+          STORAGE_ACCOUNT_NAME: ${{ steps.sa-data.outputs.STORAGE_ACCOUNT_NAME }}
+          STORAGE_ACCOUNT_ACCESS_KEY: ${{ steps.sa-data.outputs.STORAGE_ACCOUNT_ACCESS_KEY }}
+          CONTAINER_ENV_RESOURCE_NAME: ${{ steps.cenv-data.outputs.CONTAINER_ENV_RESOURCE_NAME }}
+          CONTAINER_ENV_RESOURCE_ID: ${{ steps.cenv-data.outputs.CONTAINER_ENV_RESOURCE_ID }}
+        with:
+          inlineScript: |
+            az deployment group create \
+              --name ${{ vars.REDIS_DEPLOYMENT_NAME }} \
+              --resource-group ${{ vars.REDIS_RESOURCE_GROUP }} \
+              --template-file ./templates/redis/main.bicep \
+              --parameters \
+                redisServerName='${{ vars.REDIS_NAME }}' \
+                containerAppEnvResourceName=$CONTAINER_ENV_RESOURCE_NAME \
+                containerAppEnvResourceId=$CONTAINER_ENV_RESOURCE_ID \
+                storageAccountName=$STORAGE_ACCOUNT_NAME \
+                storageAccountKey=$STORAGE_ACCOUNT_ACCESS_KEY
