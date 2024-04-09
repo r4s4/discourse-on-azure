@@ -104,6 +104,41 @@ jobs:
           DS_REDIS_HOST: ${{ steps.redis-data.outputs.DS_REDIS_HOST }}
         with:
           inlineScript: |
+            # Deploy with custom domain disabled
+            az deployment group create \
+              --name ${{ vars.DS_DEPLOYMENT_NAME }}_PRE \
+              --resource-group ${{ vars.DS_RESOURCE_GROUP }} \
+              --template-file ./templates/discourse/main-wout-cert.bicep \
+              --parameters \
+                appName='${{ vars.DS_NAME }}' \
+                containerAppEnvResourceName=$CONTAINER_ENV_RESOURCE_NAME \
+                containerAppEnvResourceId=$CONTAINER_ENV_RESOURCE_ID \
+                storageAccountName=$STORAGE_ACCOUNT_NAME \
+                storageAccountKey=$STORAGE_ACCOUNT_ACCESS_KEY \
+                discourseDomainName='${{ secrets.DOMAIN_NAME }}' \
+                discourseDeveloperEmail='${{ secrets.DS_ENV_DEV_EMAIL }}' \
+                discourseSMTPAddress=$DS_SMTP_ADDRESS \
+                discourseSMTPPort=$DS_SMTP_PORT \
+                discourseSMTPUser=$DS_SMTP_USER \
+                discourseSMTPPass=$DS_SMTP_PASS \
+                discourseSMTPEmailDomain='${{ secrets.DOMAIN_NAME }}' \
+                discourseSMTPEmail=$DS_SMTP_EMAIL \
+                discourseDbHost=$DS_DB_HOST \
+                discourseDbName=$DS_DB_NAME \
+                discourseDbUser=$DS_DB_USER \
+                discourseDbPass=$DS_DB_PASS \
+                discourseRedisHost=$DS_REDIS_HOST
+
+            # Deploy managed certificate 
+            az deployment group create \
+              --name ${{ vars.DS_DEPLOYMENT_NAME }}_CERT \
+              --resource-group ${{ vars.DS_RESOURCE_GROUP }} \
+              --template-file ./templates/discourse/modules/mcert.bicep \
+              --parameters \
+                managedEnvironmentName=$CONTAINER_ENV_RESOURCE_NAME \
+                domainName='${{ secrets.DOMAIN_NAME }}' || true
+
+            # Deploy with custom domain enabled
             az deployment group create \
               --name ${{ vars.DS_DEPLOYMENT_NAME }} \
               --resource-group ${{ vars.DS_RESOURCE_GROUP }} \
@@ -126,4 +161,4 @@ jobs:
                 discourseDbName=$DS_DB_NAME \
                 discourseDbUser=$DS_DB_USER \
                 discourseDbPass=$DS_DB_PASS \
-                discourseRedisHost=$DS_REDIS_HOST \
+                discourseRedisHost=$DS_REDIS_HOST

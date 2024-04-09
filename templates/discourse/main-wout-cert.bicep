@@ -60,10 +60,6 @@ resource containerAppEnvLogsMount 'Microsoft.App/managedEnvironments/storages@20
   }
 }
 
-resource managedCertResource 'Microsoft.App/managedEnvironments/managedCertificates@2023-11-02-preview' existing = {
-  name: '${containerAppEnvResourceName}/${discourseDomainName}-certificate'
-}
-
 resource containerAppResource 'Microsoft.App/containerapps@2023-05-02-preview' = {
   name: appName
   location: location
@@ -81,9 +77,8 @@ resource containerAppResource 'Microsoft.App/containerapps@2023-05-02-preview' =
         }
         customDomains: [
           {
-            name: managedCertResource.properties.subjectName
-            certificateId: managedCertResource.id
-            bindingType: 'SniEnabled'
+            name: discourseDomainName
+            bindingType: 'Disabled'
           }
         ]
       }
