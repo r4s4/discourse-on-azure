@@ -7,6 +7,10 @@ on:
       - '.github/workflows/sa-deployment.yml'
     branches: [ "main" ]
 
+  workflow_run:
+    workflows: ["VNet Deployment CI"]
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -29,9 +33,7 @@ jobs:
         id: vnet-data
         run: |
           output=$(az deployment group show -n ${{ vars.VNET_DEPLOYMENT_NAME }} -g ${{ vars.VNET_RESOURCE_GROUP }})
-          redisSubnetId=$(echo $output | jq -r '.properties.outputs.redisSubnetId.value')
           containersSubnetId=$(echo $output | jq -r '.properties.outputs.containerAppsSubnetId.value')
-          echo "REDIS_SUBNET_ID=$redisSubnetId" >> "$GITHUB_OUTPUT"
           echo "CONTAINERS_SUBNET_ID=$containersSubnetId" >> "$GITHUB_OUTPUT"
 
       - name: Checkout current branch
@@ -40,7 +42,6 @@ jobs:
       - name: Deploy Storage Account Resources
         uses: Azure/cli@v2.0.0
         env:
-          REDIS_SUBNET_ID: ${{ steps.vnet-data.outputs.REDIS_SUBNET_ID }}
           CONTAINERS_SUBNET_ID: ${{ steps.vnet-data.outputs.CONTAINERS_SUBNET_ID }}
         with:
           inlineScript: |
@@ -50,5 +51,4 @@ jobs:
               --template-file ./templates/storage-account/main.bicep \
               --parameters \
                 storageAccountPrefix='${{ vars.SA_PRIFIX_NAME }}' \
-                redisSubnetId=$REDIS_SUBNET_ID \
                 containersSubnetId=$CONTAINERS_SUBNET_ID
