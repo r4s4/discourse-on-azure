@@ -5,6 +5,7 @@ param containerAppEnvResourceName string
 param containerAppEnvResourceId string 
 
 param storageAccountName string
+@secure()
 param storageAccountKey string 
 
 resource redisFileShareResource 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-01-01' = {
