@@ -69,3 +69,4 @@ resource redisAppResource 'Microsoft.App/containerapps@2023-05-02-preview' = {
   }
 }
 
+output redisHost string = redisAppResource.name
