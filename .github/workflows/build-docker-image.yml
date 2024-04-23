@@ -16,4 +16,4 @@ jobs:
     
     - name: Build the Docker image
       run: |
-        ./image-creation/build.sh
+        sudo ./image-creation/build.sh
