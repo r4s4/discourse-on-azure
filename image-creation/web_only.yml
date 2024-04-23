@@ -1,0 +1,47 @@
+templates:
+  - "templates/web.template.yml"
+  - "templates/web.ratelimited.template.yml"
+
+params:
+  ## Which Git revision should this container use? (default: tests-passed)
+  version: __DISCOURSE_VERSION__
+
+env:
+  # required settings
+  LANG: en_US.UTF-8
+  DISCOURSE_HOSTNAME: 'discourse.cubyte.net'
+  DISCOURSE_SMTP_ADDRESS: localhost
+
+  # database
+  DISCOURSE_DB_USERNAME: bootstrap
+  DISCOURSE_DB_PASSWORD: ''
+  DISCOURSE_DB_HOST: bootstrap-postgres
+  DISCOURSE_DB_NAME: bootstrap
+
+  # redis
+  DISCOURSE_REDIS_HOST: bootstrap-redis
+
+## Plugins go here
+## see https://meta.discourse.org/t/19157 for details
+#hooks:
+#  after_code:
+#    - exec:
+#        cd: $home/plugins
+#        cmd:
+#          - git clone https://github.com/discourse/docker_manager.git
+
+## Remember, this is YAML syntax - you can only have one block with a name
+run:
+  - exec: echo "Beginning of custom commands"
+
+  ## If you want to configure password login for root, uncomment and change:
+  ## Use only one of the following lines:
+  #- exec: /usr/sbin/usermod -p 'PASSWORD_HASH' root
+  #- exec: /usr/sbin/usermod -p "$(mkpasswd -m sha-256 'RAW_PASSWORD')" root
+
+  ## If you want to authorized additional users, uncomment and change:
+  #- exec: ssh-import-id username
+  #- exec: ssh-import-id anotherusername
+
+  - exec: sed -i -r 's/(std(err|out)_path)/# \1/g' /var/www/discourse/config/unicorn.conf.rb
+  - exec: echo "End of custom commands"
